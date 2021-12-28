@@ -19,15 +19,15 @@ jobs:
       with:
         java-version: '11'
         distribution: 'adopt'
-        server-id: ossrh 
-        server-username: ${{ secrets.OSSRH_USERNAME }} # env variable for username in deploy
-        server-password: ${{ secrets.OSSRH_TOKEN }} # env variable for token in deploy
+        server-id: ossrh
+        server-username: MAVEN_USERNAME # env variable for username in deploy
+        server-password: MAVEN_PASSWORD # env variable for token in deploy
         gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }} # Value of the GPG private key to import
-        gpg-passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} # env variable for GPG private key passphrase
-        settings-path: ${{ github.workspace }} # location for the settings.xml file
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE # env variable for GPG private key passphrase
 
     - name: Build with Maven
       run: mvn deploy --batch-mode -D skipTests --activate-profiles release --no-transfer-progress
       env:
         MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
