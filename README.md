@@ -4,6 +4,16 @@ Implementation of a client for connecting to a [Simple Message Passing Server](h
 
 This client follows a NIO implementation. 
 
+Declare next dependency:
+
+``` xml
+<dependency>
+  <groupId>io.github.scruz84</groupId>
+  <artifactId>smp_client</artifactId>
+  <version>0.1</version>
+</dependency>
+```
+
 Example:
 
 ``` java
