@@ -6,9 +6,9 @@
 
   <groupId>io.github.scruz84</groupId>
   <artifactId>smp_client</artifactId>
-  <version>0.1</version>
+  <version>0.1.1</version>
 
-  <name>${project.groupId}:${project.artifactId}</name>
+  <name>io.github.scruz84:smp_client</name>
   <url>https://github.com/scruz84/smp-java-client</url>
   <description>A Java client for smp-server.</description>
 
@@ -164,7 +164,7 @@
             <configuration>
               <serverId>ossrh</serverId>
               <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>false</autoReleaseAfterClose>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
             </configuration>
           </plugin>
 
