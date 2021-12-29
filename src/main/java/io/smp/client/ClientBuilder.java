@@ -18,20 +18,33 @@
  */
 package io.smp.client;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.smp.client.exception.SmpException;
-import io.smp.client.network.Channel;
-import io.smp.client.network.ChannelImpl;
-import io.smp.client.network.handler.ChannelWriteException;
-import io.smp.client.network.handler.DispatchMessageReadHandler;
-import io.smp.client.network.handler.MessageWriter;
+import io.smp.client.network.handler.DispatchMessageHandler;
+import io.smp.client.network.handler.FragmentDecoder;
+import io.smp.client.network.handler.FragmentEncoder;
+import io.smp.client.network.handler.MessageDecoder;
+import io.smp.client.network.handler.MessageEncoder;
 import io.smp.client.network.message.impl.LoginMessageRequest;
-import io.smp.client.network.selection.ChannelSelector;
 
 public final class ClientBuilder {
+
+    private static AtomicLong counter = new AtomicLong(0);
+    private static final ExecutorService eventLoopExecutor = Executors.newFixedThreadPool(2, r -> {
+        final Thread th = new Thread(r, "smp ("+counter.getAndIncrement()+')');
+        th.setDaemon(true);
+        return th;
+    });
 
     private String host;
     private int port = 1984;
@@ -84,6 +97,7 @@ public final class ClientBuilder {
         return this;
     }
 
+    /*
     public Client build() throws SmpException {
         try {
             final DispatchMessageReadHandler dispatchMessageReadHandler = new DispatchMessageReadHandler();
@@ -108,4 +122,42 @@ public final class ClientBuilder {
             throw new SmpException("Error opening connection with " + host+':'+port, e);
         }
     }
+*/
+    public Client build() throws SmpException {
+        try {
+            final EventLoopGroup workerGroup = new NioEventLoopGroup(2, eventLoopExecutor);
+            final Bootstrap bootstrap = new Bootstrap();
+            bootstrap.group(workerGroup);
+            bootstrap.channel(NioSocketChannel.class);
+            bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+
+            final DispatchMessageHandler dispatchMessageHandler = new DispatchMessageHandler();
+            bootstrap.handler(new ChannelInitializer<io.netty.channel.socket.SocketChannel>() {
+                @Override
+                public void initChannel(io.netty.channel.socket.SocketChannel ch)
+                    throws Exception {
+                    ch.pipeline().addLast(
+                        new FragmentDecoder(),
+                        new MessageDecoder(),
+                        new FragmentEncoder(),
+                        new MessageEncoder(),
+                        dispatchMessageHandler);
+                }
+            });
+            final ChannelFuture channelFuture = bootstrap.connect(host, port).sync();
+            final NettyClientImpl nettyClient = new NettyClientImpl(channelFuture, onMessageListener);
+            dispatchMessageHandler.subscribe(nettyClient);
+            final LoginMessageRequest login = new LoginMessageRequest(user, password);
+            channelFuture.channel().writeAndFlush(login);
+            return nettyClient;
+        }
+        catch (SmpException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            throw new SmpException("Error opening connection with " + host+':'+port, e);
+        }
+    }
+
+
 }
