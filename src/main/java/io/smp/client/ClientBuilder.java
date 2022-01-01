@@ -29,10 +29,12 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.FixedLengthFrameDecoder;
 import io.smp.client.exception.SmpException;
 import io.smp.client.network.handler.DispatchMessageHandler;
 import io.smp.client.network.handler.FragmentDecoder;
 import io.smp.client.network.handler.FragmentEncoder;
+import io.smp.client.network.handler.HandlerUtil;
 import io.smp.client.network.handler.MessageDecoder;
 import io.smp.client.network.handler.MessageEncoder;
 import io.smp.client.network.message.impl.LoginMessageRequest;
@@ -97,32 +99,6 @@ public final class ClientBuilder {
         return this;
     }
 
-    /*
-    public Client build() throws SmpException {
-        try {
-            final DispatchMessageReadHandler dispatchMessageReadHandler = new DispatchMessageReadHandler();
-            final SocketChannel socketChannel = SocketChannel.open(new InetSocketAddress(host, port));
-            final Channel channel = new ChannelImpl(socketChannel,
-                new MessageWriter(null),
-                dispatchMessageReadHandler);
-
-            socketChannel.configureBlocking(false);
-            ChannelSelector.registerSelector(channel, socketChannel);
-
-            final LoginMessageRequest login = new LoginMessageRequest(user, password);
-            final ClientImpl client = new ClientImpl(channel, onMessageListener);
-            dispatchMessageReadHandler.subscribe(client);
-            channel.dispatchWrite(login);
-            return client;
-        }
-        catch (SmpException e) {
-            throw e;
-        }
-        catch (IOException | ChannelWriteException e) {
-            throw new SmpException("Error opening connection with " + host+':'+port, e);
-        }
-    }
-*/
     public Client build() throws SmpException {
         try {
             final EventLoopGroup workerGroup = new NioEventLoopGroup(2, eventLoopExecutor);
@@ -137,6 +113,7 @@ public final class ClientBuilder {
                 public void initChannel(io.netty.channel.socket.SocketChannel ch)
                     throws Exception {
                     ch.pipeline().addLast(
+                        new FixedLengthFrameDecoder(HandlerUtil.packet_size),
                         new FragmentDecoder(),
                         new MessageDecoder(),
                         new FragmentEncoder(),

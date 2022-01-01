@@ -26,6 +26,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 public class FragmentDecoder extends ChannelInboundHandlerAdapter {
 
     private ByteBuf internalBuffer;
+
     private int currentMessageSize = -1;
 
     @Override
@@ -37,16 +38,21 @@ public class FragmentDecoder extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         final ByteBuf m = (ByteBuf) msg;
         try {
+            boolean firstPackage = false;
             if (currentMessageSize < 0) {
+                firstPackage = true;
                 //starts a new message
                 currentMessageSize = HandlerUtil.bytesToInt(m);
             }
-            int maxSlice = Math.min(currentMessageSize, m.readableBytes());
+            int maxSlice = Math.min(currentMessageSize-internalBuffer.readableBytes(), m.readableBytes());
             internalBuffer.writeBytes(m.slice(0, maxSlice));
+            m.readerIndex((firstPackage? HandlerUtil.packet_size : maxSlice));
             if (internalBuffer.readableBytes() == currentMessageSize) {
                 currentMessageSize = -1;
-                super.channelRead(ctx, internalBuffer.slice(4, internalBuffer.readableBytes()-4));
+                super.channelRead(ctx, internalBuffer.slice(HandlerUtil.initial_packet_length_info,
+                    internalBuffer.readableBytes() - HandlerUtil.initial_packet_length_info));
             }
+
         }
         finally {
             if (currentMessageSize == -1) {

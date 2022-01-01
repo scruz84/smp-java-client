@@ -29,48 +29,19 @@ public class FragmentEncoder extends ChannelOutboundHandlerAdapter {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         final ByteBuf m = (ByteBuf) msg;
         final ByteBuf outputMsg;
-        if (m.readableBytes() > HandlerUtil.packet_size-4) {
-            outputMsg = ctx.alloc().buffer(4 + m.readableBytes());
+        if (m.readableBytes() > HandlerUtil.packet_size-HandlerUtil.initial_packet_length_info) {
+            outputMsg = ctx.alloc().buffer(HandlerUtil.initial_packet_length_info + m.readableBytes());
         } else {
             outputMsg = ctx.alloc().buffer(HandlerUtil.packet_size);
         }
         try {
-            outputMsg.writeBytes(HandlerUtil.intToBytes(m.readableBytes()+4));
+            outputMsg.writeBytes(HandlerUtil.intToBytes(m.readableBytes()+HandlerUtil.initial_packet_length_info));
             m.getBytes(0, outputMsg);
-            //TODO: mirar si el mensaje es menor de packet_size, el resto está con ceros y además cuentan!!
         }
         finally {
             m.release();
         }
         super.write(ctx, outputMsg, promise);
     }
-
-    /*
-    @Override
-    protected byte[] doWrite(byte[] message, Channel channel) throws Exception {
-        final ByteBuffer[] byteBuffers;
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(HandlerUtil.packet_size);
-        //writes first block
-        byteBuffer.put(HandlerUtil.intToBytes(message.length+4));
-        byteBuffer.position(4);
-        byteBuffer.put(message, 0, Math.min(message.length, HandlerUtil.packet_size - 4));
-        byteBuffer.position(0);
-
-        if (message.length > HandlerUtil.packet_size-4) {
-            byteBuffers = new ByteBuffer[2];
-            byteBuffers[0] = byteBuffer;
-            final ByteBuffer newByteBuffer = ByteBuffer.allocate(message.length+4-HandlerUtil.packet_size);
-            byteBuffers[1] = newByteBuffer;
-            newByteBuffer.put(message, HandlerUtil.packet_size-4, newByteBuffer.capacity());
-            newByteBuffer.position(0);
-        } else {
-            byteBuffers = new ByteBuffer[]{byteBuffer};
-        }
-
-        channel.write(byteBuffers);
-
-        return message;
-    }
-    */
 
 }
