@@ -20,6 +20,8 @@ package io.smp.client.network.handler;
 
 import java.nio.ByteBuffer;
 
+import io.netty.buffer.ByteBuf;
+
 public final class HandlerUtil {
 
     public static final int packet_size = 32;
@@ -40,6 +42,16 @@ public final class HandlerUtil {
         intValue |= getUnsignedByte(byteBuffer, 2) << 8;
         intValue |= getUnsignedByte(byteBuffer, 1) << 16;
         intValue |= getUnsignedByte(byteBuffer, 0) << 24;
+
+        return intValue; //unsigned numbers
+    }
+
+    public static int bytesToInt(ByteBuf byteBuffer) {
+        int intValue = 0;
+        intValue |= byteBuffer.getUnsignedByte(3);
+        intValue |= byteBuffer.getUnsignedByte(2) << 8;
+        intValue |= byteBuffer.getUnsignedByte(1) << 16;
+        intValue |= byteBuffer.getUnsignedByte(0) << 24;
 
         return intValue; //unsigned numbers
     }

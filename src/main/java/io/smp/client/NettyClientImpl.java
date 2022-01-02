@@ -23,22 +23,22 @@ import java.util.concurrent.Flow;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import io.netty.channel.ChannelFuture;
 import io.smp.client.exception.SmpException;
-import io.smp.client.network.Channel;
 import io.smp.client.network.message.Message;
 import io.smp.client.network.message.impl.InputMessage;
 import io.smp.client.network.message.impl.SendMessage;
 import io.smp.client.network.message.impl.SubscribeTopic;
 import io.smp.client.network.message.impl.TopicMessage;
 
-final class ClientImpl implements Client, Flow.Subscriber<Message> {
+final class NettyClientImpl implements Client, Flow.Subscriber<Message> {
 
-    private static final Logger logger = Logger.getLogger(ClientImpl.class.getCanonicalName());
+    private static final Logger logger = Logger.getLogger(NettyClientImpl.class.getCanonicalName());
 
-    private final Channel channel;
+    private final ChannelFuture channel;
     private final OnMessageListener onMessageListener;
 
-    ClientImpl(Channel channel, OnMessageListener onMessageListener) {
+    NettyClientImpl(ChannelFuture channel, OnMessageListener onMessageListener) {
         this.channel = channel;
         this.onMessageListener = onMessageListener;
     }
@@ -46,7 +46,7 @@ final class ClientImpl implements Client, Flow.Subscriber<Message> {
     @Override
     public void subscribeTopic(String topic) throws SmpException {
         try {
-            channel.dispatchWrite(new SubscribeTopic(topic, true));
+            channel.channel().writeAndFlush(new SubscribeTopic(topic, true));
         } catch (Exception e) {
             throw new SmpException("Error subscribing to topic '"+ topic+"': " + e.getMessage(), e);
         }
@@ -55,7 +55,7 @@ final class ClientImpl implements Client, Flow.Subscriber<Message> {
     @Override
     public void unSubscribeTopic(String topic) throws SmpException {
         try {
-            channel.dispatchWrite(new SubscribeTopic(topic, false));
+            channel.channel().writeAndFlush(new SubscribeTopic(topic, false));
         } catch (Exception e) {
             throw new SmpException("Error un-subscribing to topic '"+ topic+"': " + e.getMessage(), e);
         }
@@ -67,7 +67,7 @@ final class ClientImpl implements Client, Flow.Subscriber<Message> {
             throw new SmpException("Topic name size must be lower or equal to 256 characters");
         }
         try {
-            channel.dispatchWrite(new SendMessage(topic, message));
+            channel.channel().writeAndFlush(new SendMessage(topic, message));
         } catch (Exception e) {
             throw new SmpException("Error subscribing to topic '"+ topic+"': " + e.getMessage(), e);
         }

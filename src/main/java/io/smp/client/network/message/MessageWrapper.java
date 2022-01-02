@@ -20,6 +20,8 @@ package io.smp.client.network.message;
 
 import java.util.Arrays;
 
+import io.netty.buffer.ByteBuf;
+import io.smp.client.network.handler.HandlerUtil;
 import io.smp.client.network.message.impl.LoginMessageResponse;
 import io.smp.client.network.message.impl.TopicMessage;
 
@@ -42,9 +44,28 @@ public final class MessageWrapper {
      */
     public static Message buildMessage(byte[] contents) {
         final byte messageType = contents[0];
-        final byte[] messageContents = Arrays.copyOfRange(contents, 4, contents.length);
+        final byte[] messageContents = Arrays.copyOfRange(contents, HandlerUtil.initial_packet_length_info, contents.length);
         Message message = null;
 
+        switch (messageType) {
+            //login
+            case LOGIN_RESPONSE:
+                message = new LoginMessageResponse(messageContents);
+                break;
+            //message received
+            case TOPIC_MESSAGE:
+                message = new TopicMessage();
+                message.deSerialize(messageContents);
+                break;
+        }
+        return message;
+    }
+
+    public static Message buildMessage(ByteBuf contents) {
+        final byte messageType = contents.getByte(0);
+        final byte[] messageContents = new byte[contents.readableBytes()-HandlerUtil.initial_packet_length_info];
+        contents.getBytes(HandlerUtil.initial_packet_length_info, messageContents);
+        Message message = null;
         switch (messageType) {
             //login
             case LOGIN_RESPONSE:
