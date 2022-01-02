@@ -18,9 +18,15 @@
  */
 package io.smp.client;
 
+import java.io.FileInputStream;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+
+import javax.net.ssl.SSLEngine;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
@@ -28,8 +34,12 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.FixedLengthFrameDecoder;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
 import io.smp.client.exception.SmpException;
 import io.smp.client.network.handler.DispatchMessageHandler;
 import io.smp.client.network.handler.FragmentDecoder;
@@ -52,6 +62,8 @@ public final class ClientBuilder {
     private int port = 1984;
     private String user;
     private String password;
+    private boolean tls = false;
+    private String serverCertificate;
     private Client.OnMessageListener onMessageListener;
 
     public String getHost() {
@@ -99,6 +111,24 @@ public final class ClientBuilder {
         return this;
     }
 
+    public boolean isTls() {
+        return tls;
+    }
+
+    public ClientBuilder setTls(boolean tls) {
+        this.tls = tls;
+        return this;
+    }
+
+    public String getServerCertificate() {
+        return serverCertificate;
+    }
+
+    public ClientBuilder setServerCertificate(String serverCertificate) {
+        this.serverCertificate = serverCertificate;
+        return this;
+    }
+
     public Client build() throws SmpException {
         try {
             final EventLoopGroup workerGroup = new NioEventLoopGroup(2, eventLoopExecutor);
@@ -108,9 +138,9 @@ public final class ClientBuilder {
             bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
 
             final DispatchMessageHandler dispatchMessageHandler = new DispatchMessageHandler();
-            bootstrap.handler(new ChannelInitializer<io.netty.channel.socket.SocketChannel>() {
+            bootstrap.handler(new ChannelInitializer<SocketChannel>() {
                 @Override
-                public void initChannel(io.netty.channel.socket.SocketChannel ch)
+                public void initChannel(SocketChannel ch)
                     throws Exception {
                     ch.pipeline().addLast(
                         new FixedLengthFrameDecoder(HandlerUtil.packet_size),
@@ -119,6 +149,10 @@ public final class ClientBuilder {
                         new FragmentEncoder(),
                         new MessageEncoder(),
                         dispatchMessageHandler);
+                    if (tls) {
+                        ch.pipeline()
+                            .addFirst(new SslHandler(createSSLEngine(ch), false));
+                    }
                 }
             });
             final ChannelFuture channelFuture = bootstrap.connect(host, port).sync();
@@ -137,4 +171,22 @@ public final class ClientBuilder {
     }
 
 
+    private SSLEngine createSSLEngine(SocketChannel ch) throws Exception {
+        final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        trustStore.load(null, null);
+        trustStore.setCertificateEntry("s-cert", generateCertificate(serverCertificate));
+
+        final SslContext sslContext = SslContextBuilder
+            .forClient()
+            .trustManager(generateCertificate(serverCertificate))
+            .build();
+
+        return sslContext.newEngine(ch.alloc(), host, port);
+    }
+
+    private X509Certificate generateCertificate(String path) throws Exception {
+        try (FileInputStream inputStream = new FileInputStream(path)) {
+            return (X509Certificate) CertificateFactory.getInstance("X509").generateCertificate(inputStream);
+        }
+    }
 }

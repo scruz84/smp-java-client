@@ -24,9 +24,11 @@ public class AppSenderExample {
 
         Client client = new ClientBuilder()
             .setHost("localhost")
-            .setPort(1984)
+            .setPort(1985)
             .setUser("sergio")
             .setPassword("secret")
+            .setTls(true)
+            .setServerCertificate("./config/tls/server.pem")
             .build();
 
         client.subscribeTopic("my-topic");
