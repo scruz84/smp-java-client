@@ -10,7 +10,7 @@ Declare next dependency:
 <dependency>
   <groupId>io.github.scruz84</groupId>
   <artifactId>smp_client</artifactId>
-  <version>0.1.1</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 
